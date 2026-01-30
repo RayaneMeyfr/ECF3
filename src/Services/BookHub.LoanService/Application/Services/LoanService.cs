@@ -10,7 +10,7 @@ public interface ILoanService
     Task<LoanDto?> GetLoanByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<LoanDto>> GetLoansByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<IEnumerable<LoanDto>> GetOverdueLoansAsync(CancellationToken cancellationToken = default);
-    Task<LoanDto> CreateLoanAsync(CreateLoanDto dto, CancellationToken cancellationToken = default);
+    Task<LoanDto> CreateLoanAsync(CreateLoanDto dto, string authToken, CancellationToken cancellationToken = default);
     Task<LoanDto?> ReturnLoanAsync(Guid id, CancellationToken cancellationToken = default);
 }
 
@@ -77,42 +77,33 @@ public class LoanService : ILoanService
         return dtos;
     }
 
-    public async Task<LoanDto> CreateLoanAsync(CreateLoanDto dto, CancellationToken cancellationToken = default)
+    public async Task<LoanDto> CreateLoanAsync(CreateLoanDto dto, string authToken, CancellationToken cancellationToken = default)
     {
-        if (dto == null) throw new ArgumentNullException(nameof(dto));
+        if (dto == null)
+            throw new ArgumentNullException(nameof(dto));
 
         var userLoans = await _repository.GetByUserIdAsync(dto.UserId, cancellationToken);
+
         var activeLoansCount = userLoans.Count(l => l.Status == Domain.Entities.LoanStatus.Active);
+
         if (activeLoansCount >= Loan.MaxActiveLoansPerUser)
         {
-            throw new InvalidOperationException("L'utilisateur a déjà 5 emprunts actifs.");
-        }
-
-        var bookAlreadyLoaned = userLoans.Any(l => l.BookId == dto.BookId && l.Status == Domain.Entities.LoanStatus.Active);
-        if (bookAlreadyLoaned)
-        {
-            throw new InvalidOperationException("Ce livre est déjà emprunté.");
+            throw new InvalidOperationException($"L'utilisateur a déjà {Loan.MaxActiveLoansPerUser} emprunts actifs.");
         }
 
         var book = await _catalogClient.GetBookAsync(dto.BookId, cancellationToken);
-        if (book == null) {
+        if (book == null)
             throw new InvalidOperationException("Livre introuvable.");
-        }
 
-        var user = await _userClient.GetUserAsync(dto.UserId, cancellationToken);
-        if (user == null){
+        var user = await _userClient.GetUserAsync(dto.UserId, authToken, cancellationToken);
+        if (user == null)
             throw new InvalidOperationException("Utilisateur introuvable.");
-
-        }
 
         var decremented = await _catalogClient.DecrementAvailabilityAsync(dto.BookId, cancellationToken);
         if (!decremented)
-        {
             throw new InvalidOperationException("Impossible de réserver ce livre pour le moment.");
-        }
 
         var loan = Loan.Create(dto.UserId, dto.BookId, book.Title, user.Email);
-
         await _repository.AddAsync(loan, cancellationToken);
 
         return new LoanDto(
@@ -128,6 +119,7 @@ public class LoanService : ILoanService
             0m
         );
     }
+
 
     public async Task<LoanDto?> ReturnLoanAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -152,7 +144,7 @@ public class LoanService : ILoanService
             _logger.LogWarning("Impossible de mettre à jour la disponibilité du livre {BookId}", loan.BookId);
         }
 
-        var loanDto = new LoanDto(
+        return new LoanDto(
             loan.Id,
             loan.UserId,
             loan.BookId,
@@ -161,12 +153,11 @@ public class LoanService : ILoanService
             loan.LoanDate,
             loan.DueDate,
             loan.ReturnDate,
-            (Shared.DTOs.LoanStatus)loan.Status,               
+            (Shared.DTOs.LoanStatus)loan.Status,
             loan.PenaltyAmount
         );
-
-        return loanDto;
     }
+
 
     private static LoanDto MapToDto(Loan loan) => new(
         loan.Id,

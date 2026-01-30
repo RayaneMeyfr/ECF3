@@ -1,13 +1,46 @@
 @using BookHub.Shared.DTOs
 
-<span class="badge bg-secondary">
-    @Status
-</span>
+<div class="card mb-3 shadow-sm">
+    <div class="card-body">
+        <h5 class="card-title">@Loan.BookTitle</h5>
+
+        <p class="mb-1">
+            <span class="fw-bold">Date d'emprunt :</span> @Loan.LoanDate.ToString("dd/MM/yyyy")
+        </p>
+        <p class="mb-1">
+            <span class="fw-bold">Date d'échéance :</span> @Loan.DueDate.ToString("dd/MM/yyyy")
+        </p>
+        @if (Loan.ReturnDate.HasValue)
+        {
+            <p class="mb-1">
+                <span class="fw-bold">Date de retour :</span> @Loan.ReturnDate.Value.ToString("dd/MM/yyyy")
+            </p>
+        }
+
+        <p class="mb-1">
+            <span class="fw-bold">Amende :</span> @Loan.PenaltyAmount.ToString("C")
+        </p>
+
+        <span class="badge @GetStatusBadgeClass(Loan.Status.ToString())">
+            @Loan.Status
+        </span>
+    </div>
+</div>
+
+
 
 @code {
     [Parameter]
-    public LoanStatus Status { get; set; }
+    public LoanDto Loan { get; set; } = default!;
 
-    [Parameter]
-    public DateTime DueDate { get; set; }
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Active" => "bg-primary",
+            "Returned" => "bg-success",
+            "Overdue" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
 }

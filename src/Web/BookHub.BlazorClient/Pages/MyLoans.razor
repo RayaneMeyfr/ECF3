@@ -1,8 +1,84 @@
 @page "/my-loans"
+@inject ILoanService LoanService
+@inject AuthStateProvider AuthState
 
 <PageTitle>Mes Emprunts - BookHub</PageTitle>
 
 <h1>Mes Emprunts</h1>
 
+@if (!AuthState.IsAuthenticated)
+{
+    <p>Vous devez être connecté pour voir vos emprunts. <a href="/login">Se connecter</a></p>
+}
+else if (userLoans == null)
+{
+    <p>Chargement des emprunts...</p>
+}
+else if (userLoans.Count == 0)
+{
+    <p>Vous n'avez aucun emprunt en cours.</p>
+}
+else
+{
+    @foreach (var loan in userLoans)
+    {
+        <LoanStatus Loan="loan" />
+
+        @if (loan.Status.ToString() == "Active")
+        {
+            <div class="d-flex justify-content-end mb-3">
+                <button class="btn btn-warning" @onclick="() => ReturnLoan(loan.Id)">
+                    <i class="bi bi-arrow-counterclockwise"></i> Rendre le livre
+                </button>
+            </div>
+        }
+    }
+}
+
 @code {
+    private List<LoanDto>? userLoans;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthState.IsAuthenticated && AuthState.CurrentUser != null)
+        {
+            try
+            {
+                userLoans = (await LoanService.GetUserLoansAsync(AuthState.CurrentUser.Id)).ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erreur lors du chargement des emprunts : " + ex.Message);
+            }
+        }
+    }
+
+    private async Task ReturnLoan(Guid loanId)
+    {
+        try
+        {
+            var returnedLoan = await LoanService.ReturnLoanAsync(loanId);
+
+            var index = userLoans!.FindIndex(l => l.Id == loanId);
+            if (index >= 0)
+            {
+                userLoans[index] = returnedLoan!;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Erreur lors du retour du livre : " + ex.Message);
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Active" => "bg-primary",
+            "Returned" => "bg-success",
+            "Overdue" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
 }

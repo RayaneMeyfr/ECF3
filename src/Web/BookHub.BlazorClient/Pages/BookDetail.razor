@@ -1,5 +1,7 @@
 @page "/books/{Id:guid}"
-@inject IBookService BookService;
+@inject IBookService BookService
+@inject ILoanService LoanService
+@inject AuthStateProvider AuthState
 
 <PageTitle>Détail du livre - BookHub</PageTitle>
 
@@ -14,6 +16,24 @@
 else
 {
     <BookCard Book="book" />
+
+    @if (AuthState.IsAdmin)
+    {
+        <h4 class="mt-4">Historique des emprunts</h4>
+        <hr />
+        @if (loans != null && loans.Any())
+        {
+            @foreach (var loan in loans)
+            {
+                <LoanStatus Loan="loan" />
+            }
+        }
+        else
+        {
+            <p class="text-muted">Aucun emprunt pour ce livre.</p>
+        }
+    }
+
 }
 
 @code {
@@ -21,9 +41,18 @@ else
     public Guid Id { get; set; }
 
     private BookDto? book;
+    private List<LoanDto>? loans;
 
     protected override async Task OnInitializedAsync()
     {
+        await AuthState.InitializeAsync();
+
         book = await BookService.GetBookByIdAsync(Id);
+
+        if (AuthState.IsAuthenticated && AuthState.IsAdmin)
+        {
+            var allLoans = await LoanService.GetOverdueLoansAsync();
+            loans = allLoans.Where(l => l.BookId == Id).ToList();
+        }
     }
 }

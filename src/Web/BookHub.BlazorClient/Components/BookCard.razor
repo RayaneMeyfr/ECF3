@@ -1,35 +1,39 @@
 @using BookHub.Shared.DTOs
+@inject ILoanService LoanService
+@inject AuthStateProvider AuthState
+@inject ILocalStorageService LocalStorage
 
 <div class="card">
     <div class="card-body">
         <h3 class="card-title">@Book.Title</h3>
         <h5 class="text-muted">@Book.Author</h5>
 
-        <p>
-            <span class="fw-bold">Catégorie :</span> @Book.Category
-        </p>
-
-        <p>
-            <span class="fw-bold">Description :</span> @Book.Description
-        </p>
-
-        <p>
-            <span class="fw-bold">ISBN :</span> @Book.ISBN
-        </p>
+        <p><span class="fw-bold">Catégorie :</span> @Book.Category</p>
+        <p><span class="fw-bold">Description :</span> @Book.Description</p>
+        <p><span class="fw-bold">ISBN :</span> @Book.ISBN</p>
 
         <p>
             <span class="fw-bold">Disponible :</span>
-            <span class="badge rounded-pill @(Book.IsAvailable ? "bg-success" : "bg-danger")">
-                @(Book.IsAvailable ? "Oui" : "Non")
+            <span class="badge rounded-pill @(Book.AvailableCopies > 0 ? "bg-success" : "bg-danger")">
+                @(Book.AvailableCopies > 0 ? "Oui" : "Non")
             </span>
         </p>
 
         <div class="d-flex justify-content-end mt-3">
-            @if (Book.IsAvailable)
+            @if (Book.AvailableCopies > 0)
             {
-                <button class="btn btn-success">
-                    <i class="bi bi-Bookmark-plus"></i> Emprunter le livre
-                </button>
+                @if (AuthState.IsAuthenticated)
+                {
+                    <button class="btn btn-success" @onclick="ShowConfirm">
+                        <i class="bi bi-bookmark-plus"></i> Emprunter le livre
+                    </button>
+                }
+                else
+                {
+                    <a href="/login" class="btn btn-primary">
+                        <i class="bi bi-box-arrow-in-right"></i> Connectez-vous pour emprunter
+                    </a>
+                }
             }
             else
             {
@@ -38,10 +42,65 @@
                 </button>
             }
         </div>
+
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="alert alert-danger mt-2">@ErrorMessage</div>
+        }
     </div>
 </div>
 
+<ConfirmDialog @ref="confirmDialog" Title="Confirmation d'emprunt" Message="Voulez-vous vraiment emprunter ce livre ?" ConfirmText="Emprunter" OnConfirm="HandleConfirm" />
+
 @code {
     [Parameter]
-    public BookDto? Book { get; set; }
+    public BookDto Book { get; set; } = default!;
+
+    private ConfirmDialog confirmDialog = default!;
+    private string? ErrorMessage;
+
+    private void ShowConfirm()
+    {
+        ErrorMessage = null;
+        confirmDialog.Show();
+    }
+
+    private async Task HandleConfirm()
+    {
+        if (!AuthState.IsAuthenticated || AuthState.CurrentUser == null)
+        {
+            ErrorMessage = "Vous devez être connecté pour emprunter un livre.";
+            return;
+        }
+
+        if (Book.Id == Guid.Empty)
+        {
+            ErrorMessage = "Livre invalide.";
+            return;
+        }
+
+        var createLoanDto = new CreateLoanDto(AuthState.CurrentUser.Id, Book.Id);
+
+        try
+        {
+            var authToken = await LocalStorage.GetItemAsync<string>("authToken");
+            if (string.IsNullOrEmpty(authToken))
+            {
+                ErrorMessage = "Impossible de récupérer le token utilisateur.";
+                return;
+            }
+
+            var loan = await LoanService.CreateLoanAsync(createLoanDto, authToken);
+            Book = Book with { IsAvailable = false }; 
+        }
+        catch (InvalidOperationException ex)
+        {
+            ErrorMessage = ex.Message; 
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = "Erreur lors de l'emprunt du livre.";
+            Console.WriteLine(ex);
+        }
+    }
 }

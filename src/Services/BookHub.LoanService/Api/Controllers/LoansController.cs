@@ -49,7 +49,14 @@ public class LoansController : ControllerBase
     {
         try
         {
-            var loan = await _loanService.CreateLoanAsync(dto, cancellationToken);
+            var authHeader = Request.Headers["Authorization"].FirstOrDefault();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                return Unauthorized(new { message = "Token manquant" });
+
+            var token = authHeader.Substring("Bearer ".Length).Trim();
+
+            var loan = await _loanService.CreateLoanAsync(dto, token, cancellationToken);
+
             return CreatedAtAction(nameof(GetById), new { id = loan.Id }, loan);
         }
         catch (InvalidOperationException ex)
@@ -61,6 +68,7 @@ public class LoansController : ControllerBase
             return StatusCode(500, new { message = ex.Message });
         }
     }
+
 
     [HttpPut("{id:guid}/return")]
     public async Task<ActionResult<LoanDto>> Return(Guid id, CancellationToken cancellationToken)

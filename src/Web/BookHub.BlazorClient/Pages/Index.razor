@@ -1,4 +1,5 @@
 @page "/"
+@inject AuthStateProvider AuthState
 
 <PageTitle>BookHub - Accueil</PageTitle>
 
@@ -20,27 +21,45 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card h-100 text-center">
-            <div class="card-body">
-                <i class="bi bi-book display-4 text-success mb-3"></i>
-                <h5 class="card-title">Emprunter facilement</h5>
-                <p class="card-text">Empruntez jusqu'à 5 livres pour une durée de 21 jours.</p>
-                <a href="/register" class="btn btn-success">Créer un compte</a>
+
+    @if (!isAuthenticated)
+    {
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <i class="bi bi-book display-4 text-success mb-3"></i>
+                    <h5 class="card-title">Emprunter facilement</h5>
+                    <p class="card-text">Empruntez jusqu'à 5 livres pour une durée de 21 jours.</p>
+                    <a href="/register" class="btn btn-success">Créer un compte</a>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card h-100 text-center">
-            <div class="card-body">
-                <i class="bi bi-clock-history display-4 text-info mb-3"></i>
-                <h5 class="card-title">Gérer vos emprunts</h5>
-                <p class="card-text">Suivez vos emprunts en cours et consultez votre historique.</p>
-                <a href="/my-loans" class="btn btn-info">Mes emprunts</a>
+    }
+    else
+    {
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <i class="bi bi-book display-4 text-success mb-3"></i>
+                    <h5 class="card-title">Emprunter facilement</h5>
+                    <p class="card-text">Empruntez jusqu'à 5 livres pour une durée de 21 jours.</p>
+                    <a href="/books" class="btn btn-success">Voir le catalogue</a>
+                </div>
             </div>
         </div>
-    </div>
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <i class="bi bi-clock-history display-4 text-info mb-3"></i>
+                    <h5 class="card-title">Gérer vos emprunts</h5>
+                    <p class="card-text">Suivez vos emprunts en cours et consultez votre historique.</p>
+                    <a href="/my-loans" class="btn btn-info">Mes emprunts</a>
+                </div>
+            </div>
+        </div>
+    }
 </div>
+
 
 <div class="row mt-5">
     <div class="col-12">
@@ -50,3 +69,14 @@
         <p class="text-muted">Fonctionnalité à venir...</p>
     </div>
 </div>
+
+
+@code {
+    private bool isAuthenticated = false; 
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
+        isAuthenticated = AuthState.IsAuthenticated;
+    }
+}
