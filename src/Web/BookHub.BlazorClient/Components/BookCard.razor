@@ -1,8 +1,43 @@
 @using BookHub.Shared.DTOs
 
-<div class="card h-100">
+<div class="card">
     <div class="card-body">
-        <p>Livre : @Book?.Title</p>
+        <h3 class="card-title">@Book.Title</h3>
+        <h5 class="text-muted">@Book.Author</h5>
+
+        <p>
+            <span class="fw-bold">Catégorie :</span> @Book.Category
+        </p>
+
+        <p>
+            <span class="fw-bold">Description :</span> @Book.Description
+        </p>
+
+        <p>
+            <span class="fw-bold">ISBN :</span> @Book.ISBN
+        </p>
+
+        <p>
+            <span class="fw-bold">Disponible :</span>
+            <span class="badge rounded-pill @(Book.IsAvailable ? "bg-success" : "bg-danger")">
+                @(Book.IsAvailable ? "Oui" : "Non")
+            </span>
+        </p>
+
+        <div class="d-flex justify-content-end mt-3">
+            @if (Book.IsAvailable)
+            {
+                <button class="btn btn-success">
+                    <i class="bi bi-Bookmark-plus"></i> Emprunter le livre
+                </button>
+            }
+            else
+            {
+                <button class="btn btn-secondary" disabled>
+                    <i class="bi bi-lock"></i> Indisponible
+                </button>
+            }
+        </div>
     </div>
 </div>
 
