@@ -91,7 +91,11 @@
             }
 
             var loan = await LoanService.CreateLoanAsync(createLoanDto, authToken);
-            Book = Book with { IsAvailable = false }; 
+            Book = Book with
+            {
+                AvailableCopies = Book.AvailableCopies - 1,
+                IsAvailable = Book.AvailableCopies - 1 > 0
+            };
         }
         catch (InvalidOperationException ex)
         {
